@@ -2,7 +2,7 @@ name: Deploy VitePress site to Pages
 
 on:
   push:
-    branches: [main]      # 监听 main 分支
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -20,17 +20,42 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10  # 或者你本地使用的 pnpm 版本，如 9
+          run_install: false
+      
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+      
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      
       - name: Setup Pages
         uses: actions/configure-pages@v4
+      
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
+      
       - name: Build with VitePress
-        run: npm run docs:build
+        run: pnpm run docs:build
+      
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
